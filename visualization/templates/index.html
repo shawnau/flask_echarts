@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset='utf-8'>
+    <title>ECharts</title>
+    <!-- 引入 echarts.js -->
+    <script src='https://cdn.bootcss.com/echarts/3.4.0/echarts.js'></script>
+    <script src='http://gallery.echartsjs.com/dep/echarts/map/js/china.js'></script>
+</head>
+<body>
+    <!-- 为ECharts准备一个具备大小（宽高）的Dom -->
+    <div id='hist' style='width: 600px; height: 400px; float: left;'></div>
+    <div id='scatter' style='width: 600px; height: 400px; float: right;'></div>
+    <div id='pie_tag' style='width: 600px; height: 400px; float: left;'></div>
+    <div id='line' style='width: 600px; height: 400px; float: right;'></div>
+
+    <script type='text/javascript'>
+        // 基于准备好的dom，初始化echarts实例
+        var hist = echarts.init(document.getElementById('hist'));
+        // 指定图表的配置项和数据
+        var dataAxis = {{ data['city_list'] | safe }};
+        var data = {{ data['count_list'] }};
+        var yMax = 500;
+        var dataShadow = [];
+        
+        for (var i = 0; i < data.length; i++) {
+            dataShadow.push(yMax);
+        }
+        
+        option = {
+            backgroundColor: new echarts.graphic.RadialGradient(0.3, 0.3, 0.8, [{
+                offset: 0,
+                color: '#f7f8fa'
+                }, {
+                offset: 1,
+                color: '#cdd0d5'
+            }]),
+            title: {
+                text: '实习数量-城市分布排名',
+                subtext: 'data from 实习僧',
+                sublink: 'http://www.shixiseng.com',
+            },
+            tooltip : {
+                trigger: 'axis',
+                axisPointer : {        // 坐标轴指示器，坐标轴触发有效
+                type : 'shadow'        // 默认为直线，可选为：'line' | 'shadow'
+                }
+            },
+            xAxis: {
+                data: dataAxis,
+                axisLabel: {
+                    inside: true,
+                    textStyle: {
+                        color: '#000'
+                    }
+                },
+                axisTick: {
+                    show: false
+                },
+                axisLine: {
+                    show: false
+                },
+                z: 10
+            },
+            yAxis: {
+                axisLine: {
+                    show: false
+                },
+                axisTick: {
+                    show: false
+                },
+                axisLabel: {
+                    textStyle: {
+                        color: '#999'
+                    }
+                }
+            },
+            dataZoom: [
+                {
+                    type: 'inside'
+                }
+            ],
+            series: [
+                {
+                    type: 'bar',
+                    name: '数量',
+                    itemStyle: {
+                        normal: {
+                            color: new echarts.graphic.LinearGradient(
+                                0, 0, 0, 1,
+                                [
+                                    {offset: 0, color: '#83bff6'},
+                                    {offset: 0.5, color: '#188df0'},
+                                    {offset: 1, color: '#188df0'}
+                                ]
+                            )
+                        },
+                        emphasis: {
+                            color: new echarts.graphic.LinearGradient(
+                                0, 0, 0, 1,
+                                [
+                                    {offset: 0, color: '#2378f7'},
+                                    {offset: 0.7, color: '#2378f7'},
+                                    {offset: 1, color: '#83bff6'}
+                                ]
+                            )
+                        }
+                    },
+                    data: data
+                }
+            ]
+        };
+        
+        // Enable data zoom when user click bar.
+        var zoomSize = 6;
+        hist.on('click', function (params) {
+            console.log(dataAxis[Math.max(params.dataIndex - zoomSize / 2, 0)]);
+            hist.dispatchAction({
+                type: 'dataZoom',
+                startValue: dataAxis[Math.max(params.dataIndex - zoomSize / 2, 0)],
+                endValue: dataAxis[Math.min(params.dataIndex + zoomSize / 2, data.length - 1)]
+            });
+        });
+
+        // 使用刚指定的配置项和数据显示图表。
+        hist.setOption(option);
+    </script>
+
+    <script type='text/javascript'>
+    var scatter = echarts.init(document.getElementById('scatter'));  
+    var data = {{ data['city_count'] | safe }};
+    var geoCoordMap = {{ data['coord_map'] | safe }}
+    
+    var convertData = function (data) {
+        var res = [];
+        for (var i = 0; i < data.length; i++) {
+            var geoCoord = geoCoordMap[data[i].name];
+            if (geoCoord) {
+                res.push({
+                    name: data[i].name,
+                    value: geoCoord.concat(data[i].value)
+                });
+            }
+        }
+        return res;
+    };
+    
+    option = {
+        backgroundColor: new echarts.graphic.RadialGradient(0.3, 0.3, 0.8, [{
+                offset: 0,
+                color: '#f7f8fa'
+                }, {
+                offset: 1,
+                color: '#cdd0d5'
+            }]),
+        title: {
+            text: '实习数量-城市分布总览',
+            left: 'left',
+            textStyle: {
+                color: '#000'
+            }
+        },
+        tooltip : {
+            trigger: 'item'
+        },
+        legend: {
+            orient: 'vertical',
+            y: 'bottom',
+            x:'right',
+            data:['实习数量'],
+            textStyle: {
+                color: '#000'
+            }
+        },
+        geo: {
+            map: 'china',
+            label: {
+                emphasis: {
+                    show: false
+                }
+            },
+            roam: true,
+            itemStyle: {
+                normal: {
+                    areaColor: '#ccc',
+                    borderColor: '#000'
+                },
+                emphasis: {
+                    areaColor: '#2a333d'
+                }
+            }
+        },
+        series : [
+            {
+                name: '实习数量',
+                type: 'scatter',
+                coordinateSystem: 'geo',
+                data: convertData(data),
+                // 圆圈大小做了对数修正
+                symbolSize: function (val) {
+                    return Math.log(val[2]) * 5;
+                },
+                label: {
+                    normal: {
+                        formatter: '{b}',
+                        position: 'right',
+                        show: false
+                    },
+                    emphasis: {
+                        show: true
+                    }
+                },
+                itemStyle: {
+                    normal: {
+                        color: '#c23531'
+                    }
+                }
+            },
+            {
+                name: 'Top 5',
+                type: 'effectScatter',
+                coordinateSystem: 'geo',
+                data: convertData(data.sort(function (a, b) {
+                    return b.value - a.value;
+                }).slice(0, 6)),
+                // 圆圈大小做了对数修正
+                symbolSize: function (val) {
+                    return Math.log(val[2]) * 5;
+                },
+                showEffectOn: 'render',
+                rippleEffect: {
+                    brushType: 'stroke'
+                },
+                hoverAnimation: true,
+                label: {
+                    normal: {
+                        formatter: '{b}',
+                        position: 'right',
+                        show: true
+                    }
+                },
+                itemStyle: {
+                    normal: {
+                        color: '#c23531',
+                        shadowBlur: 10,
+                        shadowColor: '#333'
+                    }
+                },
+                zlevel: 1
+            }
+        ]
+    };
+    scatter.setOption(option);
+    </script>
+
+    <script type='text/javascript'>
+        var pie = echarts.init(document.getElementById('pie_tag'));
+        option = {
+            backgroundColor: new echarts.graphic.RadialGradient(0.3, 0.3, 0.8, [{
+                offset: 0,
+                color: '#f7f8fa'
+                }, {
+                offset: 1,
+                color: '#cdd0d5'
+            }]),
+            title: {
+                text: '实习标签/公司-数量分布',
+                left: 'left',
+                textStyle: {
+                    color: '#000'
+                }
+            },
+            tooltip: {
+                trigger: 'item',
+                formatter: "{a} <br/>{b}: {c} ({d}%)"
+            },
+            legend: {
+                orient: 'vertical',
+                x: 'left',
+            },
+            series: [
+                {
+                    name:'标签',
+                    type:'pie',
+                    radius: ['50%', '70%'],
+                    avoidLabelOverlap: true,
+                    label: {
+                        normal: {
+                            show: true,
+                            position: 'outside'
+                        },
+                        emphasis: {
+                            show: true,
+                            textStyle: {
+                                fontSize: '30',
+                                fontWeight: 'bold'
+                            }
+                        }
+                    },
+                    labelLine: {
+                        normal: {
+                            show: true
+                        }
+                    },
+                    data: {{ data['tags'] | safe }}
+                },
+
+                {
+                    name:'公司',
+                    type:'pie',
+                    radius: ['10%', '40%'],
+                    avoidLabelOverlap: true,
+                    label: {
+                        normal: {
+                            show: false,
+                            position: 'inside'
+                        },
+                        emphasis: {
+                            show: true,
+                            textStyle: {
+                                color: '#000',
+                                fontSize: '20',
+                                fontWeight: 'bold'
+                            }
+                        }
+                    },
+                    labelLine: {
+                        normal: {
+                            show: true
+                        }
+                    },
+                    data: {{ data['company'] | safe }}
+                }
+            ]
+        };
+        pie.setOption(option);
+    </script>
+
+    <script type='text/javascript'>
+            var line = echarts.init(document.getElementById('line'));
+            option = {
+                backgroundColor: new echarts.graphic.RadialGradient(0.3, 0.3, 0.8, [{
+                offset: 0,
+                color: '#f7f8fa'
+                }, {
+                offset: 1,
+                color: '#cdd0d5'
+                }]),
+                title: {
+                    text: '堆叠区域图',
+                    left: 'left'
+                },
+                tooltip : {
+                    trigger: 'axis'
+                },
+                legend: {
+                    data:{{ data['tag_names'] | safe }}
+                },
+                toolbox: {
+                    feature: {
+                        saveAsImage: {}
+                    }
+                },
+                grid: {
+                    left: '3%',
+                    right: '4%',
+                    bottom: '3%',
+                    containLabel: true
+                },
+                xAxis : [
+                    {
+                        type : 'category',
+                        boundaryGap : false,
+                        data : {{ data['time_list']  | safe }}
+                    }
+                ],
+                yAxis : [
+                    {
+                        type : 'value'
+                    }
+                ],
+                series : [
+                    {% for tag in data['tag_names_list'] %}
+                    {
+                        name: '{{ tag | safe }}',
+                        type: 'line',
+                        stack: '总量',
+                        areaStyle: {normal: {}},
+                        data: {{ data['time_tag'][loop.index0] }}
+                    },
+                    {% endfor %}
+                ]
+            };
+        line.setOption(option);
+    </script>
+</body>
+</html>
