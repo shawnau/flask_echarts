@@ -21,7 +21,7 @@ app.config.from_pyfile('config.py')
 app.config['MONGO_DBNAME'] = 'shixiseng_interns'
 mongo = PyMongo(app, config_prefix='MONGO')
 
-# 初始化json文件的操作每小时更新一次, 但第一次必须手动进行
+# 初始化json文件的操作每分钟时更新一次, 但第一次必须手动进行
 def init_json():
     with app.app_context():    
         m = model.MongoModel(app, mongo.db)
@@ -35,7 +35,7 @@ scheduler = BackgroundScheduler()
 scheduler.start()
 scheduler.add_job(
     func=init_json,
-    trigger=IntervalTrigger(hours=1),
+    trigger=IntervalTrigger(minutes=1),
     id='dump_json',
     name='generate json files',
     replace_existing=True)
