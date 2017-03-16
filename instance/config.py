@@ -1,1 +1,1 @@
-SECRET_KEY = '123456'
+SECRET_KEY = 'your_secret_key'
