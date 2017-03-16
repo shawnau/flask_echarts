@@ -24,11 +24,13 @@ mongo = PyMongo(app, config_prefix='MONGO')
 # 初始化json文件的操作每分钟时更新一次, 但第一次必须手动进行
 def init_json():
     with app.app_context():    
+        print 'dumpling json...'
         m = model.MongoModel(app, mongo.db)
         m.count_intern()
         m.count_tags('tag')
         m.count_tags('company_name')
         m.count_tag_date()
+        print 'done'
 
 # 定时启动init_json()
 scheduler = BackgroundScheduler()
